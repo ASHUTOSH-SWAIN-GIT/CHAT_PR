@@ -1,5 +1,7 @@
+const { subSeconds } = require("date-fns");
 const User = require("../models/Usermodel");
 const JWT = require("jsonwebtoken");
+const bcrypt = require(`bcrypt`)
 
 // Register a user
 exports.RegisterUser = async (req, res) => {
@@ -46,5 +48,41 @@ exports.RegisterUser = async (req, res) => {
     } catch (error) {
         console.error("Registration Error:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
+
+// login a user 
+exports.Login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ success: false, message: "All the fields are required" });
+        }
+
+        const user = await User.findOne({ username });
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Username not found" });
+        }
+
+        // Compare passwords
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
+        }
+
+        // Generate JWT Token
+        const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Login successful!", 
+            token 
+        });
+
+    } catch (error) {
+        console.error("Login Error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
 };
