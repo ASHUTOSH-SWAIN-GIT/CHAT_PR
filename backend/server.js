@@ -5,8 +5,15 @@ const port = process.env.PORT || 4000
 const Userroute = require("./routes/UserRoutes")
 const Messageroute = require("./routes/messageRoutes")
 const mongoose = require(`mongoose`)
+const cors = require(`cors`)
 
 app.use(express.json())
+
+// Enable CORS for all requests
+app.use(cors());
+
+// Or enable CORS for specific frontend origin
+app.use(cors({ origin: "http://localhost:5174" }));
 
 
 app.use("/api/user",Userroute)
