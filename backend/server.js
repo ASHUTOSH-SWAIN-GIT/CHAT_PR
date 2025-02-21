@@ -13,7 +13,7 @@ app.use(express.json())
 app.use(cors());
 
 // Or enable CORS for specific frontend origin
-app.use(cors({ origin: "http://localhost:5174" }));
+app.use(cors({ origin: "http://localhost:5173" }));
 
 
 app.use("/api/user",Userroute)

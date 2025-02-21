@@ -6,7 +6,7 @@ const { RegisterUser,Login } = require("../controllers/UserController");
 router.post("/register", RegisterUser);
 
 // Dummy login and profile routes
-router.get("/login",Login);
+router.post("/login",Login);
 
 router.get("/profile", (req, res) => {
     res.send("Welcome to your profile");
