@@ -1,25 +1,48 @@
-const Chat = require(`../models/ChatModel`);
-const Message = require(`../models/MessaegModel`);
+const Chat = require("../models/ChatModel");
+const Message = require("../models/MessaegModel");
+const mongoose = require(`mongoose`)
+const User = require(`../models/Usermodel`)
 
-
-// send message 
+// Send message
 exports.SendMessage = async (req, res) => {
     try {
-        const { conversationId, senderId, receiverId, text } = req.body;
+        const { senderId, receiverId, text } = req.body;
 
-        if (!conversationId || !senderId || !receiverId || !text) {
+        if (!senderId || !receiverId || !text) {
             return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
-        // Ensure conversation exists
-        const chatExists = await Chat.findById(conversationId);
-        if (!chatExists) {
-            return res.status(404).json({ success: false, message: "Chat conversation not found" });
+        // ✅ Convert senderId & receiverId to ObjectId (if using MongoDB _id)
+        const mongoose = require("mongoose");
+        if (!mongoose.Types.ObjectId.isValid(senderId) || !mongoose.Types.ObjectId.isValid(receiverId)) {
+            return res.status(400).json({ success: false, message: "Invalid sender or receiver ID format" });
         }
 
-        // Create and save the new message
+        // ✅ Check if sender & receiver exist in the database
+        const sender = await User.findById(senderId);
+        const receiver = await User.findById(receiverId);
+
+        if (!sender || !receiver) {
+            return res.status(404).json({ success: false, message: "Sender or receiver not found" });
+        }
+
+        // ✅ Check if conversation exists between them
+        let conversation = await Chat.findOne({
+            participants: { $all: [senderId, receiverId] }
+        });
+
+        // ✅ If no conversation exists, create one
+        if (!conversation) {
+            conversation = new Chat({
+                participants: [senderId, receiverId],
+                lastMessage: null
+            });
+            await conversation.save();
+        }
+
+        // ✅ Create and save the new message
         const newMessage = new Message({
-            conversationId,
+            conversationId: conversation._id,
             senderId,
             receiverId,
             text
@@ -27,13 +50,15 @@ exports.SendMessage = async (req, res) => {
 
         const savedMessage = await newMessage.save();
 
-        // Update last message in the chat
-        await Chat.findByIdAndUpdate(conversationId, { lastMessage: savedMessage._id });
+        // ✅ Update last message in the chat
+        conversation.lastMessage = savedMessage._id;
+        await conversation.save();
 
-        // Emit message to connected clients via socket.io
-        io.getIO().to(conversationId).emit("receive_message", savedMessage);
+        // ✅ Emit message to connected clients via socket.io
+        req.app.get("io").to(conversation._id.toString()).emit("receive_message", savedMessage);
 
         res.status(200).json({ success: true, message: "Message sent successfully!", data: savedMessage });
+
     } catch (error) {
         console.error("Error sending message:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -41,10 +66,10 @@ exports.SendMessage = async (req, res) => {
 };
 
 
-// get all  messages of a conversation
+// Get all messages of a conversation
 exports.getMessages = async (req, res) => {
     try {
-        const { id: conversationId } = req.params;  // ✅ Get ID from URL params
+        const { conversationId } = req.params;
 
         if (!conversationId) {
             return res.status(400).json({ success: false, message: "Conversation ID is required" });
@@ -58,4 +83,3 @@ exports.getMessages = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 };
-

@@ -20,7 +20,6 @@ const Login = () => {
     setMessage("");
     setErrors({});
 
-    // Validate input fields
     const validationErrors = {};
     if (!formData.username.trim()) validationErrors.username = "Username is required";
     if (formData.password.length < 6) validationErrors.password = "Password must be at least 6 characters";
@@ -40,15 +39,17 @@ const Login = () => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      setMessage(response.data.message || "Login successful!");
-      localStorage.setItem("token", response.data.token);
+      const { token, user } = response.data;
 
-      // Redirect to Home Page after login
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setMessage("Login successful!");
+
       setTimeout(() => {
         navigate("/dash");
       }, 2000);
     } catch (error) {
-      console.error("Login error:", error.response?.data || error.message);
       setErrors({ general: error.response?.data?.error || "Invalid username or password" });
     }
   };
@@ -62,7 +63,6 @@ const Login = () => {
         {errors.general && <p className="text-red-500 text-center">{errors.general}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Username</label>
             <input
@@ -71,13 +71,12 @@ const Login = () => {
               value={formData.username}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Enter your username"
             />
             {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
           </div>
 
-          {/* Password Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
@@ -86,17 +85,13 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Enter your password"
             />
             {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-          >
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
             Login
           </button>
         </form>

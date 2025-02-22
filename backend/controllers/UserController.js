@@ -15,6 +15,7 @@ exports.RegisterUser = async (req, res) => {
         const trimmedUsername = username.trim().toLowerCase();
         const trimmedEmail = email.trim().toLowerCase();
 
+        // Check if user already exists
         const existingUser = await User.findOne({
             $or: [{ username: trimmedUsername }, { email: trimmedEmail }]
         });
@@ -26,23 +27,23 @@ exports.RegisterUser = async (req, res) => {
             });
         }
 
-        // Create new user (password will be hashed automatically in User model)
+        // Create new user (userId will be generated automatically)
         const user = new User({
             username: trimmedUsername,
             email: trimmedEmail,
-            password // No need to hash here
+            password // Assume hashing is handled in model middleware
         });
 
         await user.save();
 
         // Generate JWT token
-        const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+        const token = JWT.sign({ id: user._id, userId: user.userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
         res.status(200).json({
             success: true,
             message: "User registered successfully",
             token,
-            user: { id: user._id, username: user.username, email: user.email }
+            user: { id: user._id, userId: user.userId, username: user.username, email: user.email }
         });
 
     } catch (error) {
@@ -57,7 +58,7 @@ exports.Login = async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({ success: false, message: "All the fields are required" });
+            return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
         const user = await User.findOne({ username });
@@ -75,10 +76,16 @@ exports.Login = async (req, res) => {
         // Generate JWT Token
         const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
+        // ✅ Sending user details along with the token
         return res.status(200).json({
             success: true,
             message: "Login successful!",
-            token
+            token,
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email
+            }
         });
 
     } catch (error) {
@@ -86,6 +93,8 @@ exports.Login = async (req, res) => {
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+;
 
 // search for a user
 exports.SearchUser = async (req, res) => {

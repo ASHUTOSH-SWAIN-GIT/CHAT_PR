@@ -1,9 +1,11 @@
-const express = require("express")
-const router = express.Router()
-const {SendMessage,getMessages}  = require(`../controllers/MessageController`)
+const express = require("express");
+const router = express.Router();
+const { SendMessage, getMessages } = require("../controllers/MessageController");
 
-// send message 
-router.post("/send",SendMessage)
-// get all messages in a conversations 
-router.get("/:id",getMessages)
-module.exports = router
+// Send message
+router.post("/send", SendMessage);
+
+// Get all messages in a conversation
+router.get("/:conversationId", getMessages);
+
+module.exports = router;

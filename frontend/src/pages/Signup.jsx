@@ -4,7 +4,7 @@ import axios from "axios";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
-    username: "", // ✅ Changed from "name" to "username"
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -22,9 +22,8 @@ const Signup = () => {
     setMessage("");
     setErrors({});
 
-    // ✅ Updated validation fields
     const validationErrors = {};
-    if (!formData.username.trim()) validationErrors.username = "Username is required"; // ✅ Changed from "name"
+    if (!formData.username.trim()) validationErrors.username = "Username is required";
     if (!formData.email.includes("@")) validationErrors.email = "Invalid email address";
     if (formData.password.length < 6) validationErrors.password = "Password must be at least 6 characters";
     if (formData.password !== formData.confirmPassword) validationErrors.confirmPassword = "Passwords do not match";
@@ -38,25 +37,26 @@ const Signup = () => {
       const response = await axios.post(
         "http://localhost:9000/api/user/register",
         {
-          username: formData.username, // ✅ Changed from "name"
+          username: formData.username,
           email: formData.email,
           password: formData.password,
         },
         { headers: { "Content-Type": "application/json" } }
       );
 
-      setMessage(response.data.message || "Signup successful!");
-      localStorage.setItem("token", response.data.token);
+      const { token, user } = response.data;
 
-      // ✅ Clear form
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      setMessage("Signup successful!");
+
       setFormData({ username: "", email: "", password: "", confirmPassword: "" });
 
-      // ✅ Redirect to Login Page after Signup
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     } catch (error) {
-      console.error("Signup error:", error.response?.data || error.message);
       setErrors({ general: error.response?.data?.message || "Signup failed. Try again!" });
     }
   };
@@ -70,22 +70,20 @@ const Signup = () => {
         {errors.general && <p className="text-red-500 text-center">{errors.general}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Username</label>
             <input
               type="text"
-              name="username" // ✅ Changed from "name"
+              name="username"
               value={formData.username}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Enter your username"
             />
             {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
           </div>
 
-          {/* Email Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -94,13 +92,12 @@ const Signup = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Enter your email"
             />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
           </div>
 
-          {/* Password Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
@@ -109,13 +106,12 @@ const Signup = () => {
               value={formData.password}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Create a password"
             />
             {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
           </div>
 
-          {/* Confirm Password Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
             <input
@@ -124,17 +120,13 @@ const Signup = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
               placeholder="Confirm your password"
             />
             {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword}</p>}
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-          >
+          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
             Sign Up
           </button>
         </form>

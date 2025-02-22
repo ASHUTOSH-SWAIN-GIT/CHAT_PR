@@ -1,12 +1,11 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
-
-const Messageschema =  new mongoose.Schema({
+const MessageSchema = new mongoose.Schema({
     conversationId: { type: mongoose.Schema.Types.ObjectId, ref: "Chat" },
-    senderId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    receiverId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    senderId: { type: String, required: true }, // Change from ObjectId to String
+    receiverId: { type: String, required: true }, // Change from ObjectId to String
     text: { type: String, required: true },
     status: { type: String, enum: ["sent", "delivered", "read"], default: "sent" }
-},{timestamps:true})
+}, { timestamps: true });
 
-module.exports = mongoose.model("Message",Messageschema)
+module.exports = mongoose.model("Message", MessageSchema);

@@ -16,7 +16,12 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(
+  cors({
+    origin: "http://localhost:5173", // ✅ Fixed trailing slash
+    credentials: true, // ✅ Required for authentication & sessions
+  })
+);
 
 // Routes
 app.use("/api/user", Userroute);
@@ -29,35 +34,39 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log(" Connected to MongoDB");
+    console.log("✅ Connected to MongoDB");
     server.listen(port, () => {
-      console.log(` Server is running on port ${port}`);
+      console.log(`🚀 Server is running on port ${port}`);
     });
   })
   .catch((err) => {
-    console.error(" Database connection error:", err);
+    console.error("❌ Database connection error:", err);
     process.exit(1);
   });
 
 // ======================  Socket.io Setup  ======================
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5173", // ✅ Fixed trailing slash
     methods: ["GET", "POST"],
+    credentials: true, // ✅ Allow credentials (important for auth)
   },
 });
+
+// ✅ Store `io` in the app instance
+app.set("io", io);
 
 io.on("connection", (socket) => {
   console.log(`⚡ User connected: ${socket.id}`);
 
   // Handle incoming messages
   socket.on("sendMessage", (data) => {
-    console.log(" Message received:", data);
+    console.log("📩 Message received:", data);
     io.emit("receiveMessage", data); // Send message to all users
   });
 
   // Handle user disconnection
   socket.on("disconnect", () => {
-    console.log(` User disconnected: ${socket.id}`);
+    console.log(`❌ User disconnected: ${socket.id}`);
   });
 });
