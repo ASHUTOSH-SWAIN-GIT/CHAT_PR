@@ -8,6 +8,8 @@ router.post("/register", RegisterUser);
 // Dummy login and profile routes
 router.post("/login",Login);
 
+// search for users
+
 router.get("/profile", (req, res) => {
     res.send("Welcome to your profile");
 });

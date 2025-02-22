@@ -35,17 +35,18 @@ exports.SendMessage = async (req, res) => {
 // get all  messages of a conversation
 exports.getMessages = async (req, res) => {
     try {
-        const { conversationId } = req.body
+        const { id: conversationId } = req.params;  // ✅ Get ID from URL params
 
-    if (!conversationId) {
-        return res.status(400).json({ success: false, message: "conversation id is required" })
-    }
+        if (!conversationId) {
+            return res.status(400).json({ success: false, message: "Conversation ID is required" });
+        }
 
-    const messages = await Message.find({ conversationId }).sort({ createdAt: 1 });
+        const messages = await Message.find({ conversationId }).sort({ createdAt: 1 });
 
-    res.status(200).json({ success: true, messages });
+        res.status(200).json({ success: true, messages });
     } catch (error) {
         console.error("Error fetching messages:", error);
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
-}
+};
+
