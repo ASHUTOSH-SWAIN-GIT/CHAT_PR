@@ -11,7 +11,13 @@ exports.SendMessage = async (req, res) => {
             return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
-        // Create new message
+        // Ensure conversation exists
+        const chatExists = await Chat.findById(conversationId);
+        if (!chatExists) {
+            return res.status(404).json({ success: false, message: "Chat conversation not found" });
+        }
+
+        // Create and save the new message
         const newMessage = new Message({
             conversationId,
             senderId,
@@ -21,8 +27,11 @@ exports.SendMessage = async (req, res) => {
 
         const savedMessage = await newMessage.save();
 
-        // Update lastMessage in the chat
+        // Update last message in the chat
         await Chat.findByIdAndUpdate(conversationId, { lastMessage: savedMessage._id });
+
+        // Emit message to connected clients via socket.io
+        io.getIO().to(conversationId).emit("receive_message", savedMessage);
 
         res.status(200).json({ success: true, message: "Message sent successfully!", data: savedMessage });
     } catch (error) {

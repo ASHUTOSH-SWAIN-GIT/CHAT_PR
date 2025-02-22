@@ -75,10 +75,10 @@ exports.Login = async (req, res) => {
         // Generate JWT Token
         const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-        return res.status(200).json({ 
-            success: true, 
-            message: "Login successful!", 
-            token 
+        return res.status(200).json({
+            success: true,
+            message: "Login successful!",
+            token
         });
 
     } catch (error) {
@@ -86,3 +86,27 @@ exports.Login = async (req, res) => {
         return res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+// search for a user
+exports.SearchUser = async (req, res) => {
+    try {
+        let username = req.query.username; 
+
+        if (!username) {
+            return res.status(400).json({ success: false, message: "username is required" })
+        }
+
+        username = String(username)
+
+        const users = await User.find({
+            username: { $regex: new RegExp(username,"i") }
+        }).select("username email")
+
+        res.status(200).json({ success: true, users })
+
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+
+    }
+}

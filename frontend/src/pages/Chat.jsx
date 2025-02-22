@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaPaperPlane, FaUserCircle, FaSearch } from "react-icons/fa";
 import { io } from "socket.io-client";
+import axios from "axios";
 
 const socket = io("http://localhost:9000"); // Change to your backend URL
 
@@ -10,10 +11,28 @@ const ChatPage = () => {
     const [search, setSearch] = useState("");
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
+    const currentUserId = "currentUserId"; // Replace this with the logged-in user's ID
 
+    // Load messages when a user is selected
+    useEffect(() => {
+        if (!selectedUser) return;
+
+        const fetchMessages = async () => {
+            try {
+                const response = await axios.get(`http://localhost:9000/api/messages/${selectedUser.conversationId}`);
+                setMessages(response.data.messages);
+            } catch (error) {
+                console.error("Error fetching messages:", error);
+            }
+        };
+
+        fetchMessages();
+    }, [selectedUser]);
+
+    // Listen for real-time messages
     useEffect(() => {
         socket.on("receive_message", (message) => {
-            if (message.sender === selectedUser?._id || message.receiver === selectedUser?._id) {
+            if (message.conversationId === selectedUser?.conversationId) {
                 setMessages((prev) => [...prev, message]);
             }
         });
@@ -23,37 +42,60 @@ const ChatPage = () => {
         };
     }, [selectedUser]);
 
+    // Search users
     const handleSearch = async () => {
-        if (!search || !conversationId) {
-            console.error("Search query or conversation ID is missing!");
-            return;
-        }
-    
+        if (!search.trim()) return;
         try {
-          const response = await fetch(`http://localhost:9000/api/messages/:Id`);  // ✅ Ensure conversationId is defined
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          const data = await response.json();
-          setUsers(data.messages);  //  Make sure this matches the response format
+            const response = await axios.get(`http://localhost:9000/api/user/search?username=${search}`);
+            setUsers(response.data.users);
         } catch (error) {
-          console.error("Error fetching messages:", error);
+            console.error("Error fetching users:", error);
         }
     };
-    
 
-
-    const handleSelectUser = (user) => {
+    // Select user and load messages
+    const handleSelectUser = async (user) => {
         setSelectedUser(user);
-        setMessages([]);
+        setMessages([]); // Clear previous messages
+        setUsers([]); // Clear search results
+        setSearch(""); // Clear search input
+
+        try {
+            const response = await axios.get(`http://localhost:9000/api/messages/${user.conversationId}`);
+            setMessages(response.data.messages);
+        } catch (error) {
+            console.error("Error fetching messages:", error);
+        }
     };
 
-    const sendMessage = () => {
+    // Send message and save it in DB
+    const sendMessage = async () => {
         if (input.trim() === "" || !selectedUser) return;
-        const message = { text: input, sender: "currentUser", receiver: selectedUser._id };
-        socket.emit("send_message", message);
-        setMessages((prev) => [...prev, message]);
-        setInput("");
+
+        const messageData = {
+            conversationId: selectedUser.conversationId,
+            senderId: currentUserId,
+            receiverId: selectedUser._id,
+            text: input,
+        };
+
+        try {
+            // Send message to backend
+            const response = await axios.post("http://localhost:9000/api/messages/send", messageData);
+
+            if (response.data.success) {
+                const savedMessage = response.data.data;
+
+                // Emit message to socket.io for real-time update
+                socket.emit("send_message", savedMessage);
+
+                // Update UI
+                setMessages((prev) => [...prev, savedMessage]);
+                setInput("");
+            }
+        } catch (error) {
+            console.error("Error sending message:", error);
+        }
     };
 
     return (
@@ -82,7 +124,7 @@ const ChatPage = () => {
                         onClick={() => handleSelectUser(user)}
                     >
                         <FaUserCircle className="text-2xl" />
-                        <span>{user.name}</span>
+                        <span>{user.username}</span>
                     </div>
                 ))}
             </div>
@@ -91,7 +133,7 @@ const ChatPage = () => {
             <div className="flex-1 flex flex-col">
                 {/* Chat Header */}
                 <div className="bg-gray-800 p-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold">{selectedUser ? `Chat with ${selectedUser.name}` : "Select a user to chat"}</h2>
+                    <h2 className="text-lg font-bold">{selectedUser ? `Chat with ${selectedUser.username}` : "Select a user to chat"}</h2>
                 </div>
 
                 {/* Messages */}
@@ -99,8 +141,7 @@ const ChatPage = () => {
                     {messages.map((msg, index) => (
                         <div
                             key={index}
-                            className={`p-3 max-w-xs rounded-lg ${msg.sender === "currentUser" ? "bg-blue-600 self-end" : "bg-gray-700 self-start"
-                                }`}
+                            className={`p-3 max-w-xs rounded-lg ${msg.senderId === currentUserId ? "bg-blue-600 self-end" : "bg-gray-700 self-start"}`}
                         >
                             {msg.text}
                         </div>
