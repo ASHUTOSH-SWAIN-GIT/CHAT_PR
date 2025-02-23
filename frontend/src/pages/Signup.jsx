@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import Cookies from "js-cookie"; // Import Cookies
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -41,13 +42,14 @@ const Signup = () => {
           email: formData.email,
           password: formData.password,
         },
-        { headers: { "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json" }, withCredentials: true } // Ensure credentials are sent
       );
 
       const { token, user } = response.data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      // Store in Cookies instead of localStorage
+      Cookies.set("token", token, { expires: 7, secure: true, sameSite: "Strict" });
+      Cookies.set("user", JSON.stringify(user), { expires: 7, secure: true, sameSite: "Strict" });
 
       setMessage("Signup successful!");
 

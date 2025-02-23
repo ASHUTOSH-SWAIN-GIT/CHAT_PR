@@ -57,33 +57,40 @@ exports.Login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        // Input validation
         if (!username || !password) {
-            return res.status(400).json({ success: false, message: "All fields are required" });
+            return res.status(400).json({ 
+                success: false, 
+                message: "All fields are required" 
+            });
         }
 
-        const user = await User.findOne({ username });
-
+        // Find user by username
+        const user = await User.findOne({ username }).select('+password'); // Include password field
         if (!user) {
-            return res.status(401).json({ success: false, message: "Username not found" });
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" // Generic message for security
+            });
         }
 
         // Compare passwords
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" 
+            });
         }
 
         // Generate JWT Token
-        const token = JWT.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = JWT.sign(
+            { id: user._id }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: "1h" }
+        );
 
-        // ✅ Store JWT in an HTTP-only cookie
-        res.cookie("token", token, {
-            httpOnly: true,  // Prevents access via JavaScript (more secure)
-            secure: process.env.NODE_ENV === "production", // Enable secure cookies in production
-            sameSite: "Strict", // Prevents CSRF attacks
-            maxAge: 3600000, // 1 hour
-        });
-
+        // Return success response with token
         return res.status(200).json({
             success: true,
             message: "Login successful!",
@@ -91,12 +98,16 @@ exports.Login = async (req, res) => {
                 _id: user._id,
                 username: user.username,
                 email: user.email
-            }
+            },
+            token // Send token in response
         });
 
     } catch (error) {
         console.error("Login Error:", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        });
     }
 };
 

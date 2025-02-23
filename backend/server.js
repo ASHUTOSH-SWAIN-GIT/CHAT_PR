@@ -57,10 +57,11 @@ const io = new Server(server, {
 // ✅ Store `io` in the app instance
 app.set("io", io);
 
+// In your Socket.IO setup (server.js)
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
-  // When a user logs in, join their unique room
+  // Join the user's room
   socket.on("join", (userId) => {
       socket.join(userId);
       console.log(`User ${userId} joined their personal room`);
@@ -69,18 +70,24 @@ io.on("connection", (socket) => {
   // Handle message sending
   socket.on("sendMessage", async ({ senderId, receiverId, text }) => {
       try {
-          // Save message to database
+          // Save message to the database
           const newMessage = new Message({ senderId, receiverId, text, isRead: false });
           await newMessage.save();
 
-          // ✅ Emit real-time message to receiver's room
+          // Emit the message to the receiver's room
           io.to(receiverId).emit("receiveMessage", newMessage);
 
-          // ✅ Send notification to receiver (even if chat isn't open)
+          // Emit a notification to the receiver
           io.to(receiverId).emit("newNotification", {
               senderId,
               text,
               timestamp: newMessage.createdAt,
+          });
+
+          // Add the sender to the receiver's chat list
+          io.to(receiverId).emit("updateChatList", {
+              senderId,
+              username: newMessage.sender.username, // Assuming sender details are populated
           });
 
       } catch (error) {
@@ -93,5 +100,4 @@ io.on("connection", (socket) => {
       console.log("User disconnected:", socket.id);
   });
 });
-
 

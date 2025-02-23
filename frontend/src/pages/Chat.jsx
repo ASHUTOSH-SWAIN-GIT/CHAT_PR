@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { FaPaperPlane, FaUserCircle, FaSearch } from "react-icons/fa";
+import { FaPaperPlane, FaUserCircle, FaSearch, FaBell } from "react-icons/fa";
 import { io } from "socket.io-client";
 import axios from "axios";
-
-const socket = io("http://localhost:9000", { withCredentials: true });
+import { useNavigate } from "react-router-dom";
 
 const ChatPage = () => {
     const [messages, setMessages] = useState([]);
@@ -11,61 +10,54 @@ const ChatPage = () => {
     const [search, setSearch] = useState("");
     const [users, setUsers] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [currentUserId, setCurrentUserId] = useState(null);
-    const [username, setUsername] = useState(null);
-    const [notifications, setNotifications] = useState({}); // Track unread messages
+    const [notifications, setNotifications] = useState({});
+    const [socket, setSocket] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const navigate = useNavigate();
+    const username = sessionStorage.getItem("username");
+    const currentUserId = sessionStorage.getItem("userId");
 
-    // Load username from local storage
+    // Authentication and redirect
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser?.username) {
-            setUsername(storedUser.username);
+        if (!username || !currentUserId) {
+            navigate("/login");
         }
-    }, []);
+    }, [username, currentUserId, navigate]);
 
-    // Fetch the current user's ID and join their room
+    // Socket connection management
     useEffect(() => {
-        if (!username) return;
-        const fetchSenderId = async () => {
-            try {
-                const response = await axios.get(`http://localhost:9000/api/user/getUserId/${username}`);
-                setCurrentUserId(response.data.userId);
-                socket.emit("join", response.data.userId); // Join the user's room
-            } catch (error) {
-                console.error("Error fetching sender ID:", error);
-            }
+        if (!currentUserId) return;
+
+        const newSocket = io("http://localhost:9000", {
+            withCredentials: true,
+            query: { userId: currentUserId },
+        });
+
+        setSocket(newSocket);
+
+        // Join the user's room
+        newSocket.emit("join", currentUserId);
+
+        // Cleanup on unmount
+        return () => {
+            newSocket.disconnect();
         };
-        fetchSenderId();
-    }, [username]);
+    }, [currentUserId]);
 
-    // Fetch messages when a user is selected
+    // Handle receiving messages
     useEffect(() => {
-        if (!selectedUser || !currentUserId) return;
-        const fetchMessages = async () => {
-            try {
-                const response = await axios.get(`http://localhost:9000/api/messages/${selectedUser._id}`);
-                setMessages(response.data.messages);
+        if (!socket) return;
 
-                // Mark all unread messages as read
-                const unreadMessages = response.data.messages.filter(msg => !msg.isRead && msg.senderId === selectedUser._id);
-                for (const msg of unreadMessages) {
-                    await axios.post(`http://localhost:9000/api/messages/markAsRead/${msg._id}`);
-                }
-                
-                setNotifications((prev) => ({ ...prev, [selectedUser._id]: 0 })); // Reset unread count
-            } catch (error) {
-                console.error("Error fetching messages:", error);
-            }
-        };
-        fetchMessages();
-    }, [selectedUser, currentUserId]);
-
-    // Listen for real-time messages
-    useEffect(() => {
         const handleReceiveMessage = (message) => {
-            setMessages((prev) => [...prev, message]); // Update chat window
+            console.log("New message received:", message);
 
-            // Update unread message count if chat isn't open
+            // If the message is from the selected user, add it to the chat
+            if (selectedUser?._id === message.senderId) {
+                setMessages((prev) => [...prev, message]);
+            }
+
+            // Update notification count for unseen messages
             if (selectedUser?._id !== message.senderId) {
                 setNotifications((prev) => ({
                     ...prev,
@@ -74,33 +66,108 @@ const ChatPage = () => {
             }
         };
 
+        // Handle new notifications
+        const handleNewNotification = (notification) => {
+            console.log("New notification:", notification);
+
+            // Update notification count for the sender
+            setNotifications((prev) => ({
+                ...prev,
+                [notification.senderId]: (prev[notification.senderId] || 0) + 1,
+            }));
+        };
+
+        // Handle updating the chat list
+        const handleUpdateChatList = (newUser) => {
+            console.log("Updating chat list with:", newUser);
+
+            // Check if the user is already in the chat list
+            const userExists = users.some((user) => user._id === newUser.senderId);
+
+            if (!userExists) {
+                // Add the new user to the chat list
+                setUsers((prev) => [
+                    ...prev,
+                    { _id: newUser.senderId, username: newUser.username },
+                ]);
+            }
+        };
+
         socket.on("receiveMessage", handleReceiveMessage);
-        return () => socket.off("receiveMessage", handleReceiveMessage);
-    }, [selectedUser]);
+        socket.on("newNotification", handleNewNotification);
+        socket.on("updateChatList", handleUpdateChatList);
+
+        // Cleanup listeners
+        return () => {
+            socket.off("receiveMessage", handleReceiveMessage);
+            socket.off("newNotification", handleNewNotification);
+            socket.off("updateChatList", handleUpdateChatList);
+        };
+    }, [socket, selectedUser, users]);
+
+    // Fetch messages when a user is selected
+    useEffect(() => {
+        if (!selectedUser || !currentUserId) return;
+
+        const abortController = new AbortController();
+        
+        const fetchMessages = async () => {
+            setIsLoading(true);
+            try {
+                const response = await axios.get(
+                    `http://localhost:9000/api/messages/${selectedUser._id}`,
+                    { signal: abortController.signal }
+                );
+
+                if (response.data.success) {
+                    const sortedMessages = response.data.messages.sort(
+                        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                    );
+                    setMessages(sortedMessages);
+
+                    // Mark messages as read
+                    if (response.data.messages.some((msg) => !msg.isRead)) {
+                        await axios.post(
+                            `http://localhost:9000/api/messages/markAsRead`,
+                            { 
+                                senderId: selectedUser._id,
+                                receiverId: currentUserId,
+                            }
+                        );
+                    }
+                    setNotifications((prev) => ({ ...prev, [selectedUser._id]: 0 }));
+                }
+            } catch (error) {
+                if (!abortController.signal.aborted) {
+                    console.error("Error fetching messages:", error);
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchMessages();
+        return () => abortController.abort();
+    }, [selectedUser, currentUserId]);
 
     // Search for users
     const handleSearch = async () => {
-        if (!search.trim()) return;
+        if (!search.trim()) {
+            setUsers([]);
+            return;
+        }
+
         try {
-            const response = await axios.get(`http://localhost:9000/api/user/search?username=${search}`);
-            setUsers(response.data.users);
+            const response = await axios.get(
+                `http://localhost:9000/api/user/search?username=${search}`
+            );
+            setUsers(response.data.users.filter((user) => user._id !== currentUserId));
         } catch (error) {
             console.error("Error fetching users:", error);
         }
     };
 
-    // Select a user to chat with
-    const handleSelectUser = async (user) => {
-        try {
-            const response = await axios.get(`http://localhost:9000/api/user/getUserId/${user.username}`);
-            setSelectedUser({ ...user, _id: response.data.userId });
-        } catch (error) {
-            console.error("Error fetching receiver ID:", error);
-        }
-        setSearch("");
-    };
-
-    // Send a message
+    // Send message
     const sendMessage = async () => {
         if (!input.trim() || !selectedUser || !currentUserId) return;
 
@@ -111,14 +178,18 @@ const ChatPage = () => {
         };
 
         try {
-            const response = await axios.post("http://localhost:9000/api/messages/send", messageData, {
-                headers: { "Content-Type": "application/json" },
-            });
+            // Save message to the database
+            const response = await axios.post(
+                "http://localhost:9000/api/messages/send", 
+                messageData
+            );
 
             if (response.data.success) {
-                const savedMessage = response.data.data;
-                socket.emit("sendMessage", savedMessage);
-                setMessages((prev) => [...prev, savedMessage]);
+                // Emit the message via Socket.IO
+                socket.emit("sendMessage", response.data.data);
+
+                // Add the message to the local state
+                setMessages((prev) => [...prev, response.data.data]);
                 setInput("");
             }
         } catch (error) {
@@ -126,28 +197,41 @@ const ChatPage = () => {
         }
     };
 
+    // Logout handler
+    const handleLogout = () => {
+        socket?.disconnect();
+        sessionStorage.clear();
+        navigate("/login");
+    };
+
     return (
         <div className="flex h-screen bg-gray-900 text-white">
-            {/* Sidebar */}
+            {/* Left Sidebar */}
             <div className="w-1/4 bg-gray-800 p-4 flex flex-col">
                 <h2 className="text-xl font-bold mb-4">Chats</h2>
                 <div className="flex items-center bg-gray-700 p-2 rounded mb-4">
-                    <input
-                        type="text"
+                    <input 
+                        type="text" 
                         className="flex-1 bg-transparent border-none focus:outline-none text-white"
                         placeholder="Search users..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                     />
-                    <button onClick={handleSearch} className="ml-2 text-gray-400 hover:text-white">
+                    <button 
+                        onClick={handleSearch} 
+                        className="ml-2 text-gray-400 hover:text-white"
+                    >
                         <FaSearch />
                     </button>
                 </div>
                 {users.map((user) => (
-                    <div
+                    <div 
                         key={user._id}
-                        className="flex items-center justify-between p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600"
-                        onClick={() => handleSelectUser(user)}
+                        className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-600 ${
+                            selectedUser?._id === user._id ? "bg-gray-600" : "bg-gray-700"
+                        }`}
+                        onClick={() => setSelectedUser(user)}
                     >
                         <div className="flex items-center gap-2">
                             <FaUserCircle className="text-2xl" />
@@ -165,33 +249,66 @@ const ChatPage = () => {
             {/* Chat Window */}
             <div className="flex-1 flex flex-col">
                 <div className="bg-gray-800 p-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold">{selectedUser ? `Chat with ${selectedUser.username}` : "Select a user to chat"}</h2>
-                    <div className="flex items-center gap-2">
-                        <FaUserCircle className="text-2xl" />
-                        <span>{username}</span>
+                    <h2 className="text-lg font-bold">
+                        {selectedUser 
+                            ? `Chat with ${selectedUser.username}`
+                            : "Select a user to chat"}
+                    </h2>
+                    <div className="flex items-center gap-4">
+                        <span className="text-white font-semibold">
+                            {username && `Logged in as: ${username}`}
+                        </span>
+                        <button 
+                            onClick={handleLogout}
+                            className="bg-red-500 px-3 py-1 rounded text-white text-sm hover:bg-red-600"
+                        >
+                            Logout
+                        </button>
                     </div>
                 </div>
-                <div className="flex-1 p-4 overflow-auto flex flex-col gap-4">
-                    {messages.map((msg, index) => (
-                        <div
-                            key={index}
-                            className={`p-3 max-w-xs rounded-lg ${msg.senderId === currentUserId ? "bg-blue-600 self-end" : "bg-gray-700 self-start"}`}
-                        >
-                            {msg.text}
+                
+                <div className="flex-1 p-4 overflow-y-auto">
+                    {isLoading ? (
+                        <div className="text-center text-gray-400">Loading messages...</div>
+                    ) : messages.length === 0 ? (
+                        <div className="text-center text-gray-400">
+                            {selectedUser ? "No messages yet" : "Select a user to start chatting"}
                         </div>
-                    ))}
+                    ) : (
+                        messages.map((msg) => (
+                            <div
+                                key={msg._id}
+                                className={`mb-2 p-2 rounded max-w-[70%] ${
+                                    msg.senderId === currentUserId 
+                                        ? "bg-blue-500 ml-auto" 
+                                        : "bg-gray-700"
+                                }`}
+                            >
+                                {msg.text}
+                                <div className="text-xs mt-1 opacity-70">
+                                    {new Date(msg.createdAt).toLocaleTimeString()}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
-                <div className="p-4 bg-gray-800 flex items-center gap-2">
+
+                <div className="bg-gray-800 p-4 flex items-center">
                     <input
                         type="text"
-                        className="flex-1 p-2 rounded bg-gray-700 border-none text-white focus:outline-none"
+                        className="flex-1 bg-gray-700 p-2 rounded text-white focus:outline-none"
                         placeholder="Type a message..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                        onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+                        disabled={!selectedUser}
                     />
-                    <button onClick={sendMessage} className="p-2 bg-blue-600 rounded hover:bg-blue-500">
-                        <FaPaperPlane className="text-xl" />
+                    <button 
+                        onClick={sendMessage}
+                        className="ml-2 text-gray-400 hover:text-white"
+                        disabled={!selectedUser}
+                    >
+                        <FaPaperPlane />
                     </button>
                 </div>
             </div>
