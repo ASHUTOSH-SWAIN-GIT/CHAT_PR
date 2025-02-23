@@ -8,7 +8,6 @@ export default {
     extend: {},
   },
   plugins: [
-    require('tailwindcss-backdrop-blur'),
-    require('tailwindcss-filters'),
+    
   ]
 }
