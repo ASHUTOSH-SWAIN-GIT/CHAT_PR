@@ -1,23 +1,33 @@
 # Use an official Node.js runtime
-FROM node:20.18.0-alpine  
+FROM node:20.18.0-alpine
 
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /backend
 
-# Set environment variable inside the container
-ENV NODE_ENV=production  
+# Set environment variables
+ENV NODE_ENV=production
 
-# Copy package.json and package-lock.json first
+# Install dependencies first for better caching
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm install --only=production  
+# Install production dependencies and clean up
+RUN apk add --no-cache --virtual .gyp python3 make g++ && \
+    npm install --only=production && \
+    apk del .gyp
 
-# Copy the rest of the backend files
-COPY . .  
+# Create non-root user and switch
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
-# Expose backend port (modify if needed)
+# Copy application code
+COPY . .
+
+# Expose port (adjust as needed)
 EXPOSE 9000
 
-# Start the backend server
+# Healthcheck (optional)
+HEALTHCHECK --interval=30s --timeout=5s \
+  CMD curl --fail http://localhost:9000/health || exit 1
+
+# Start the server
 CMD ["node", "server.js"]
