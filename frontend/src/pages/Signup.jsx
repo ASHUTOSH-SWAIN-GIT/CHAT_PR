@@ -36,7 +36,7 @@ const Signup = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:9000/api/user/register",
+        "https://chat-pr.onrender.com/api/user/register",
         {
           username: formData.username,
           email: formData.email,

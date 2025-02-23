@@ -27,7 +27,7 @@ const ChatPage = () => {
     useEffect(() => {
         if (!currentUserId) return;
 
-        const newSocket = io("http://localhost:9000", {
+        const newSocket = io("https://chat-pr.onrender.com", {
             withCredentials: true,
             query: { userId: currentUserId },
         });
@@ -70,7 +70,7 @@ const ChatPage = () => {
 
         try {
             const response = await axios.get(
-                `http://localhost:9000/api/user/search?username=${search}`
+                `https://chat-pr.onrender.com/api/user/search?username=${search}`
             );
             setUsers(response.data.users.filter((user) => user._id !== currentUserId));
         } catch (error) {
@@ -89,7 +89,7 @@ const ChatPage = () => {
 
         try {
             const response = await axios.post(
-                "http://localhost:9000/api/messages/send", 
+                "https://chat-pr.onrender.com/api/messages/send", 
                 messageData
             );
 

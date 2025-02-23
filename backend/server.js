@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const http = require("http");
-const  Message = require(`./models/MessageModel`)
+const Message = require("./models/MessageModel");
 
 const Userroute = require("./routes/UserRoutes");
 const Messageroute = require("./routes/messageRoutes");
@@ -15,14 +15,19 @@ const port = process.env.PORT || 4000;
 // Create HTTP server for WebSocket
 const server = http.createServer(app);
 
-// Middleware
-app.use(express.json());
+// ✅ Updated CORS Configuration
 app.use(
   cors({
-    origin: "http://localhost:5173", // ✅ Fixed trailing slash
-    credentials: true, // ✅ Required for authentication & sessions
+    origin: [
+      "http://localhost:5173", // Local Development
+      "https://chat-pr-mauve.vercel.app", // Deployed Frontend
+    ],
+    credentials: true, // Required for authentication & cookies
   })
 );
+
+// Middleware
+app.use(express.json());
 
 // Routes
 app.use("/api/user", Userroute);
@@ -30,9 +35,7 @@ app.use("/api/messages", Messageroute);
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, {
-    
-  })
+  .connect(process.env.MONGO_URI, {})
   .then(() => {
     console.log("✅ Connected to MongoDB");
     server.listen(port, () => {
@@ -47,56 +50,63 @@ mongoose
 // ======================  Socket.io Setup  ======================
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // ✅ Fixed trailing slash
+    origin: [
+      "http://localhost:5173", // Local Development
+      "https://chat-pr-mauve.vercel.app", // Deployed Frontend
+    ],
     methods: ["GET", "POST"],
-    credentials: true, // ✅ Allow credentials (important for auth)
+    credentials: true, // Allow credentials (important for auth)
   },
 });
 
 // ✅ Store `io` in the app instance
 app.set("io", io);
 
-// In your Socket.IO setup (server.js)
+// Socket.IO Event Handlers
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
   // Join the user's room
   socket.on("join", (userId) => {
-      socket.join(userId);
-      console.log(`User ${userId} joined their personal room`);
+    socket.join(userId);
+    console.log(`User ${userId} joined their personal room`);
   });
 
   // Handle message sending
   socket.on("sendMessage", async ({ senderId, receiverId, text }) => {
-      try {
-          // Save message to the database
-          const newMessage = new Message({ senderId, receiverId, text, isRead: false });
-          await newMessage.save();
+    try {
+      // Save message to the database
+      const newMessage = new Message({
+        senderId,
+        receiverId,
+        text,
+        isRead: false,
+      });
+      await newMessage.save();
 
-          // Emit the message to the receiver's room
-          io.to(receiverId).emit("receiveMessage", newMessage);
+      // Emit the message to the receiver's room
+      io.to(receiverId).emit("receiveMessage", newMessage);
 
-          // Emit a notification to the receiver
-          io.to(receiverId).emit("newNotification", {
-              senderId,
-              text,
-              timestamp: newMessage.createdAt,
-          });
+      // Emit a notification to the receiver
+      io.to(receiverId).emit("newNotification", {
+        senderId,
+        text,
+        timestamp: newMessage.createdAt,
+      });
 
-          // Add the sender to the receiver's chat list
-          io.to(receiverId).emit("updateChatList", {
-              senderId,
-              username: newMessage.sender.username, // Assuming sender details are populated
-          });
+      // Add the sender to the receiver's chat list
+      io.to(receiverId).emit("updateChatList", {
+        senderId,
+        username: newMessage.sender?.username, // Assuming sender details are populated
+      });
 
-      } catch (error) {
-          console.error("Error sending message:", error);
-      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   });
 
   // Handle disconnection
   socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
+    console.log("User disconnected:", socket.id);
   });
 });
-
