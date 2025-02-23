@@ -22,7 +22,7 @@ export default function Home() {
       <div className="text-center max-w-2xl">
         {/* Logo & Heading */}
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 drop-shadow-lg">
-          Welcome to ChatX
+          Welcome to Chatify
         </h1>
         <p className="mt-4 text-lg text-gray-300">
           Connect, chat, and share moments with friends in real-time.
@@ -60,6 +60,11 @@ export default function Home() {
           <div className="w-48 h-48 bg-blue-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
         </div>
       </div>
+
+      {/* Footer - Made by Ashutosh */}
+      <footer className="absolute bottom-6 text-gray-400 text-sm">
+        Made with ❤️ by <span className="text-blue-400 font-semibold">Ashutosh</span>
+      </footer>
     </div>
   );
 }
