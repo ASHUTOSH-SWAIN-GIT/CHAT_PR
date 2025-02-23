@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const http = require("http");
+const  Message = require(`../backend/models/MessaegModel`)
 
 const Userroute = require("./routes/UserRoutes");
 const Messageroute = require("./routes/messageRoutes");
@@ -57,16 +58,40 @@ const io = new Server(server, {
 app.set("io", io);
 
 io.on("connection", (socket) => {
-  console.log(`⚡ User connected: ${socket.id}`);
+  console.log("A user connected:", socket.id);
 
-  // Handle incoming messages
-  socket.on("sendMessage", (data) => {
-    console.log("📩 Message received:", data);
-    io.emit("receiveMessage", data); // Send message to all users
+  // When a user logs in, join their unique room
+  socket.on("join", (userId) => {
+      socket.join(userId);
+      console.log(`User ${userId} joined their personal room`);
   });
 
-  // Handle user disconnection
+  // Handle message sending
+  socket.on("sendMessage", async ({ senderId, receiverId, text }) => {
+      try {
+          // Save message to database
+          const newMessage = new Message({ senderId, receiverId, text, isRead: false });
+          await newMessage.save();
+
+          // ✅ Emit real-time message to receiver's room
+          io.to(receiverId).emit("receiveMessage", newMessage);
+
+          // ✅ Send notification to receiver (even if chat isn't open)
+          io.to(receiverId).emit("newNotification", {
+              senderId,
+              text,
+              timestamp: newMessage.createdAt,
+          });
+
+      } catch (error) {
+          console.error("Error sending message:", error);
+      }
+  });
+
+  // Handle disconnection
   socket.on("disconnect", () => {
-    console.log(`❌ User disconnected: ${socket.id}`);
+      console.log("User disconnected:", socket.id);
   });
 });
+
+

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { RegisterUser,Login,SearchUser } = require("../controllers/UserController");
 const User = require(`../models/Usermodel`)
+const authenticateUser = require(`../middleware/Authmiddleware`)
 
 // Register route
 router.post("/register", RegisterUser);
@@ -10,7 +11,7 @@ router.post("/register", RegisterUser);
 router.post("/login",Login);
 
 // search for users
-router.get("/search", SearchUser);
+router.get("/search", authMiddleware,SearchUser);
 
 // Route to get user ID by username
 router.get("/getUserId/:username", async (req, res) => {
