@@ -21,7 +21,6 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dash" element={<MainPage />} />
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/chat" element={<ChatPage />} />
           <Route path="/profile" element={<Profile />} />
 
         </Route>
