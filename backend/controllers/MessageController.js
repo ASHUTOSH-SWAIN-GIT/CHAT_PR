@@ -1,5 +1,5 @@
 const Chat = require("../models/ChatModel");
-const Message = require("../models/MessaegModel");
+const Message = require("../models/MessageModel");
 const mongoose = require(`mongoose`)
 const User = require(`../models/Usermodel`)
 

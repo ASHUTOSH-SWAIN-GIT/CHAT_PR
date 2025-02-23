@@ -42,7 +42,7 @@ const Signup = () => {
           email: formData.email,
           password: formData.password,
         },
-        { headers: { "Content-Type": "application/json" }, withCredentials: true } // Ensure credentials are sent
+        { headers: { "Content-Type": "application/json" }, withCredentials: true }
       );
 
       const { token, user } = response.data;
@@ -64,78 +64,83 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96">
-        <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">Create an Account</h2>
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      <div className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-white/20 w-96">
+        <h2 className="text-3xl font-extrabold text-center text-blue-400 drop-shadow-md">
+          Create an Account
+        </h2>
 
-        {message && <p className="text-green-500 text-center">{message}</p>}
-        {errors.general && <p className="text-red-500 text-center">{errors.general}</p>}
+        {message && <p className="text-green-400 text-center mt-2">{message}</p>}
+        {errors.general && <p className="text-red-500 text-center mt-2">{errors.general}</p>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
+            <label className="block text-sm font-medium text-gray-300">Username</label>
             <input
               type="text"
               name="username"
               value={formData.username}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
+              className="mt-1 block w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg shadow-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter your username"
             />
-            {errors.username && <p className="text-red-500 text-sm">{errors.username}</p>}
+            {errors.username && <p className="text-red-400 text-sm">{errors.username}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium text-gray-300">Email</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
+              className="mt-1 block w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg shadow-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Enter your email"
             />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+            {errors.email && <p className="text-red-400 text-sm">{errors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="block text-sm font-medium text-gray-300">Password</label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
+              className="mt-1 block w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg shadow-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Create a password"
             />
-            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
+            {errors.password && <p className="text-red-400 text-sm">{errors.password}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-300">Confirm Password</label>
             <input
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              className="mt-1 block w-full px-4 py-2 border rounded-lg shadow-sm"
+              className="mt-1 block w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg shadow-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
               placeholder="Confirm your password"
             />
-            {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword}</p>}
+            {errors.confirmPassword && <p className="text-red-400 text-sm">{errors.confirmPassword}</p>}
           </div>
 
-          <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="w-full py-2 text-lg font-semibold bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 transition-all focus:ring-2 focus:ring-blue-400"
+          >
             Sign Up
           </button>
         </form>
 
-        <p className="text-center text-gray-600 text-sm mt-4">
+        <p className="text-center text-gray-400 text-sm mt-4">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-500 hover:underline">
+          <Link to="/login" className="text-blue-400 hover:underline">
             Log in
           </Link>
         </p>
