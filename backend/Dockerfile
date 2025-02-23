@@ -2,16 +2,16 @@
 FROM node:20-alpine  
 
 # Set the working directory inside the container
-WORKDIR /app
+WORKDIR /backend
 
 # Copy package.json and package-lock.json first
-COPY backend/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy the rest of the backend files
-COPY backend . 
+COPY . . 
 
 # Expose backend port (modify if needed)
 EXPOSE 9000
