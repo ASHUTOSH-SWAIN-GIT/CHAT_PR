@@ -7,5 +7,8 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [
+    require('tailwindcss-backdrop-blur'),
+    require('tailwindcss-filters'),
+  ]
 }
