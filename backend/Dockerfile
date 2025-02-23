@@ -1,5 +1,5 @@
 # Use an official Node.js runtime
-FROM node:20-alpine  
+FROM node:20.18.0-alpine  
 
 # Set the working directory inside the container
 WORKDIR /backend
