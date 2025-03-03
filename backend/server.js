@@ -15,7 +15,7 @@ const port = process.env.PORT || 4000;
 // Create HTTP server for WebSocket
 const server = http.createServer(app);
 
-// ✅ Updated CORS Configuration
+//  Updated CORS Configuration
 app.use(
   cors({
     origin: [
